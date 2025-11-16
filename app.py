@@ -18,6 +18,10 @@ logger = logging.getLogger(__name__)
 api_key = os.environ.get("ZTM_API_KEY")
 if not api_key:
     raise "Missing API key. Provide ZTM_API_KEY environment variable."
+app_auth_token = os.environ.get("APP_AUTH_TOKEN")
+if not app_auth_token:
+    logger.warning("APP_AUTH_TOKEN is not set – /schedule will be unprotected.")
+
 
 
 def _parse_lines_param(value: Optional[str]) -> List[int]:
@@ -59,6 +63,11 @@ def _fetch_departures(stop_id: int, stop_number: str, lines: List[int]):
 
 @app.get("/schedule/<int:stop_id>/<stop_number>")
 def schedule(stop_id: int, stop_number: str):
+    if app_auth_token:
+        header_token = request.headers.get("X-Auth-Token")
+        if not header_token or header_token != app_auth_token:
+            return jsonify({"error": "Unauthorized"}), 401
+
     lines_param = request.args.get("lines")
     lines = _parse_lines_param(lines_param)
     if not lines:
@@ -75,9 +84,6 @@ def schedule(stop_id: int, stop_number: str):
     now_iso = datetime.now(ZoneInfo(os.environ.get("TIMEZONE", "CET"))).isoformat()
     body = {
         "departures": departures[:5],
-        "stop_id": stop_id,
-        "stop_number": stop_number,
-        "lines": lines,
         "updated_at": now_iso,
     }
     return jsonify(body)
