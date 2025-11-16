@@ -1,13 +1,12 @@
 import inspect
+import os
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-import homeassistant.util.dt as dt_util
-
-ZTMTimeZone = ZoneInfo("CET")
+ZTMTimeZone = ZoneInfo(os.environ.get("TIMEZONE", "CET"))
 
 
 @dataclass
@@ -55,19 +54,28 @@ class ZTMDepartureDataReading:
         now = datetime.now().astimezone(tz=ZTMTimeZone)
 
         try:
-            dt = datetime.combine(now.date() + timedelta(days=1 if self.night_bus else 0),
-                                  dt_util.parse_time(f"{hour:02d}:{minute:02d}"))
+            # Build timezone-aware datetime in ZTM timezone, with correct date rollover
+            target_date = now.date() + timedelta(days=1 if self.night_bus else 0)
+            local_dt = datetime(
+                year=target_date.year,
+                month=target_date.month,
+                day=target_date.day,
+                hour=hour,
+                minute=minute,
+                second=0,
+                microsecond=0,
+                tzinfo=ZTMTimeZone,
+            )
 
-            dt = dt.astimezone(timezone.utc)
-
+            dt = local_dt.astimezone(timezone.utc)
+            
             return dt
         except Exception:
             return None
 
     @property
     def time_to_depart(self):
-        now = dt_util.now()
-        now = now.astimezone(timezone.utc)
+        now = datetime.now(timezone.utc)
 
         return int((self.dt - now).seconds / 60)
 
