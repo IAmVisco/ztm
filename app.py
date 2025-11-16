@@ -1,14 +1,18 @@
 import logging
 import os
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional
 from zoneinfo import ZoneInfo
 
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import Flask, jsonify, request
 
 from components import ZTMStopClient
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(
+    app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
+)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 api_key = os.environ.get("ZTM_API_KEY")
