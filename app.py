@@ -1,6 +1,8 @@
 import logging
 import os
 import json
+import sys
+
 import redis
 from datetime import datetime
 from typing import List, Optional
@@ -15,8 +17,22 @@ app = Flask(__name__)
 app.wsgi_app = ProxyFix(
     app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1
 )
-logging.basicConfig(level=logging.INFO)
+
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+logger.handlers = []
+formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+
+stdout_handler = logging.StreamHandler(sys.stdout)
+stdout_handler.setLevel(logging.INFO)
+stdout_handler.setFormatter(formatter)
+logger.addHandler(stdout_handler)
+
+stderr_handler = logging.StreamHandler(sys.stderr)
+stderr_handler.setLevel(logging.WARNING)
+stderr_handler.setFormatter(formatter)
+logger.addHandler(stderr_handler)
 
 api_key = os.environ.get("ZTM_API_KEY")
 if not api_key:
